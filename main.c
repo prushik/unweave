@@ -19,7 +19,7 @@
 //#include <fcntl.h>
 //#include <sys/socket.h>
 //#include <netinet/in.h>
-//#include <sys/signal.h>
+#include <sys/signal.h>
 
 //#include <sys/ioctl.h>
 //#include <net/if.h>
@@ -185,8 +185,20 @@ int parse_uri(char *uri, char **argv)
 	int argc=0;
 	argv[argc] = uri;
 	argc++;
-	for (i = 0; uri[i]; i++)
+	if (uri[0] == '/') // just about the lamest security ever (part1)
 	{
+		write(1,"402 Permission Denied\n",22);
+		close(1);
+		exit(1);
+	}
+	for (i = 1; uri[i]; i++)
+	{
+		if (uri[i] == '.' && uri[i-1] == '.') // just about the lamest security ever (part1)
+		{
+			write(1,"402 Permission Denied\n",22);
+			close(1);
+			exit(1);
+		}
 		if (uri[i] == '?' || uri[i] == '&')
 		{
 			uri[i] = '\0';
@@ -219,7 +231,7 @@ int main(int argc, char **argv)
 		{
 			if (argv[i][1]=='p')//Alternate port number
 				port = strtoi(argv[i+1], '\0');
-			if (argv[i][1]=='d')//Base directory - careful with this, nothing prevents ../../../../etc/shadow
+			if (argv[i][1]=='d')//Base directory
 				chdir(argv[i+1]);
 			if (argv[i][1]=='f')//Specify response file
 				resp=argv[i+1];
@@ -251,10 +263,10 @@ int main(int argc, char **argv)
 	clilen = sizeof(cli_addr);
 
 	//Just in-case the client disconnects unexpectedly
-//	signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 
 	//Reap children immediately
-//	signal(SIGCHLD, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
 
 	listen(sockfd,5);
 	while (1)
